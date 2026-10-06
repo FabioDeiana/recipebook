@@ -10,4 +10,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCase(String name);
+
+    // Duplicate check on update, ignoring the category being renamed
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 }

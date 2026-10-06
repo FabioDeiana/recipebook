@@ -3,6 +3,7 @@ package com.fabio.recipebook.config;
 import com.fabio.recipebook.repositories.AppUserRepository;
 import com.fabio.recipebook.security.JwtFilter;
 import com.fabio.recipebook.security.JwtTools;
+import com.fabio.recipebook.security.RateLimitFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -39,6 +40,8 @@ public class SecurityConfig {
                 )
                 // 401 instead of the default 403 when the token is missing or invalid
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                // Rate limit first (only acts on POST /api/friend-recipes), then JWT
+                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtFilter(jwtTools, appUserRepository), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -55,6 +55,10 @@ public class DataSeeder implements CommandLineRunner {
         if (appUserRepository.existsByUsername(adminUsername)) {
             return;
         }
+        // Same rule as PATCH /api/auth/password
+        if (adminPassword.length() < 8) {
+            throw new IllegalStateException("ADMIN_PASSWORD must be at least 8 characters");
+        }
         appUserRepository.save(new AppUser(adminUsername, passwordEncoder.encode(adminPassword), "ADMIN"));
         log.info("Admin user '{}' created", adminUsername);
     }

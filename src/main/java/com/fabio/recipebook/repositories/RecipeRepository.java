@@ -11,4 +11,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long>, JpaSpecif
     Optional<Recipe> findBySlug(String slug);
 
     boolean existsBySlug(String slug);
+
+    // Slug check on update, ignoring the recipe being renamed
+    boolean existsBySlugAndIdNot(String slug, Long id);
+
+    long countByCategoryId(Long categoryId);
 }

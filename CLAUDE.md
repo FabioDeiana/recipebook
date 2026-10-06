@@ -81,7 +81,7 @@ Serving scaling is done in the frontend (`quantity * newServings / servings`, TO
 - `GET /api/recipes?search=&section=&categoryId=&tagId=&favorite=&page=&size=&sort=` — list with search and filters, returns `RecipeSummaryDTO` page
 - `GET /api/recipes/{slug}` — full `RecipeDetailDTO`
 - `POST /api/recipes` — create full recipe (ingredients + steps in one request, section always OWN)
-- `PUT /api/recipes/{id}` — replace full recipe
+- `PUT /api/recipes/{id}` — replace full recipe; keeps section, authorName, favorite, lastCookedAt; slug is regenerated only if the title changes
 - `DELETE /api/recipes/{id}` — works for both OWN and FRIENDS recipes
 - `PATCH /api/recipes/{id}/favorite` — toggle favorite
 - `PATCH /api/recipes/{id}/cooked` — set `lastCookedAt` to today
@@ -90,22 +90,22 @@ Serving scaling is done in the frontend (`quantity * newServings / servings`, TO
 **Friend submissions**
 - `POST /api/friend-recipes` — public; always forces `section = FRIENDS`; `authorName` required; can only use existing categories and tags
 
-**Categories** — `GET`, `POST`, `PUT /{id}`, `DELETE /{id}` on `/api/categories`
-**Tags** — `GET`, `POST`, `DELETE /{id}` on `/api/tags`
+**Categories** — `GET`, `POST`, `PUT /{id}`, `DELETE /{id}` on `/api/categories`. Names unique (case-insensitive). Deleting a category used by recipes → 400.
+**Tags** — `GET`, `POST`, `DELETE /{id}` on `/api/tags`. Names unique (case-insensitive). Deleting a tag removes it from all recipes (recipes are kept).
 **Ingredients** — `GET /api/ingredients?search=` for form autocomplete
 
 When creating or updating a recipe, ingredients are matched by name (case-insensitive); if one doesn't exist it's created on the fly.
 
-Useful sorts: `createdAt,desc`, `title,asc`, `lastCookedAt,asc` ("not cooked in a while").
+Useful sorts: `createdAt,desc`, `title,asc`, `lastCookedAt,asc` ("not cooked in a while", never-cooked first). Only `createdAt`, `updatedAt`, `title`, `lastCookedAt` are sortable (others → 400). Default page size 12, max 50. Page JSON: `{ content, page: { size, number, totalElements, totalPages } }`.
 
 ## Search
 
-Keyword search is case-insensitive across title, description, ingredient names and tag names (JPQL with LEFT JOINs + DISTINCT, paginated). If search and filters get combined, switch to Spring Data JPA Specifications.
+Keyword search is case-insensitive across title, description, ingredient names and tag names, combined with the filters via Spring Data JPA Specifications (`RecipeSpecifications`, EXISTS subqueries — no DISTINCT needed). Also accent-insensitive via PostgreSQL `unaccent` ("tiramisu" finds "Tiramisù"); the extension is enabled at startup by `schema.sql` (`spring.sql.init.mode=always`), so it also works on the online DB.
 
 ## Friend submission protection
 
-- **Honeypot**: `FriendRecipeRequest` has a hidden `website` field. If it's not empty, return 201 without saving.
-- **Rate limit**: max 5 submissions per hour per IP on `POST /api/friend-recipes`, return 429 when exceeded (Bucket4j — not added yet, add when we get there).
+- **Honeypot**: `FriendRecipeRequestDTO` has a hidden `website` field. If it's not empty, return 201 without saving. The response has no body in both cases, so bots can't tell the difference.
+- **Rate limit**: max 5 submissions per hour per IP on `POST /api/friend-recipes`, return 429 with `Retry-After` when exceeded (Bucket4j 8.21, `RateLimitFilter`, in memory — resets on restart).
 - **Validation**: `authorName` max 50, `title` max 100, `description` max 2000, max 30 ingredients, max 30 steps.
 
 ## Later (not now)
