@@ -1,0 +1,8 @@
+# Never copy local secrets into the image
+env.properties
+target
+.git
+.idea
+.vscode
+*.iml
+HELP.md

@@ -18,10 +18,13 @@ A personal recipe website, built as a surprise gift. One owner (admin) manages h
 
 ## Configuration
 
-- Secrets live in `env.properties` in the project root, imported with `spring.config.import=file:env.properties`. This file is in `.gitignore` — never commit it, never hardcode secrets.
-- Keys in `env.properties`: `PORT`, `PG_DB_NAME`, `PG_USERNAME`, `PG_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`.
+- Locally, secrets live in `env.properties` in the project root, imported with `spring.config.import=optional:file:env.properties`. This file is in `.gitignore` and `.dockerignore` — never commit it, never hardcode secrets.
+- Online there is no `env.properties`: the same keys are set as environment variables.
+- Keys: `PORT` (default 8080), `PG_DB_NAME`, `PG_USERNAME`, `PG_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`.
+- Online-only keys: `DATABASE_URL` (full JDBC URL, e.g. `jdbc:postgresql://host/db?sslmode=require`; replaces the localhost URL built from `PG_DB_NAME`) and `CORS_ALLOWED_ORIGINS` (comma-separated, default `http://localhost:5173`).
 - Inject values with `@Value("${...}")`.
 - Local DB: PostgreSQL on localhost:5432, database `recipebook`, `ddl-auto=update`.
+- Deploy: `Dockerfile` (multi-stage Maven build, Java 21 JRE).
 
 ## Package structure
 
@@ -105,11 +108,11 @@ Keyword search is case-insensitive across title, description, ingredient names a
 ## Friend submission protection
 
 - **Honeypot**: `FriendRecipeRequestDTO` has a hidden `website` field. If it's not empty, return 201 without saving. The response has no body in both cases, so bots can't tell the difference.
-- **Rate limit**: max 5 submissions per hour per IP on `POST /api/friend-recipes`, return 429 with `Retry-After` when exceeded (Bucket4j 8.21, `RateLimitFilter`, in memory — resets on restart).
+- **Rate limit**: max 5 submissions per hour per IP on `POST /api/friend-recipes`, return 429 with `Retry-After` when exceeded (Bucket4j 8.21, `RateLimitFilter`, in memory — resets on restart). CORS exposes `Retry-After` so the browser can read it.
 - **Validation**: `authorName` max 50, `title` max 100, `description` max 2000, max 30 ingredients, max 30 steps.
 
 ## Later (not now)
 
-- Image upload with Cloudinary (for now `imageUrl` is a plain string)
 - Optional AI recipe import with the Anthropic Java SDK
-- Deploy (Koyeb or similar, online PostgreSQL)
+
+Image upload is done by the frontend directly to Cloudinary (unsigned preset); the backend only stores the resulting URL in `imageUrl`.
